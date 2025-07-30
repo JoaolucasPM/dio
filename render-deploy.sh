@@ -9,3 +9,4 @@ flask --app src.app db upgrade
 
 # Inicia o servidor com Gunicorn apontando para o app WSGI
 exec gunicorn src.wsgi:app
+echo "Pulando instalação de requirements.txt"
