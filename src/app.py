@@ -35,7 +35,7 @@ class User(db.Model):
     username: Mapped[str] = mapped_column(sa.String,unique=True)
     password: Mapped[str] = mapped_column(sa.String,nullable=False)
     role_id: Mapped[int] = mapped_column(sa.ForeignKey("role.id"))  
-    role: Mapped['Role'] = relationship(back_populates="user") 
+ 
      
     def __repr__(self) -> str:
          return f"User(id={self.id!r}, username={self.username!r})"
@@ -66,7 +66,7 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY='dev',
-     
+       ## SQLALCHEMY_DATABASE_URI = 'sqlite:///diobank.sqlite',
        SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL'],
         JWT_SECRET_KEY = "super_secret"
         
