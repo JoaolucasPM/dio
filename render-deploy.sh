@@ -7,3 +7,4 @@ flask --app src.app db upgrade
 
 # Inicia com Gunicorn
 gunicorn src.wsgi:app
+export PYTHON_VERSION=3.11.8
