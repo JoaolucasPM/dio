@@ -1,8 +1,8 @@
-"""Initial migration with user table
+"""add role_id column to User
 
-Revision ID: 68de81cbdf79
+Revision ID: da0a85e97eb0
 Revises: 
-Create Date: 2025-07-30 20:50:16.466010
+Create Date: 2025-07-31 10:49:55.640906
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '68de81cbdf79'
+revision = 'da0a85e97eb0'
 down_revision = None
 branch_labels = None
 depends_on = None
