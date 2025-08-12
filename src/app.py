@@ -1,64 +1,25 @@
 import os, click
-import sqlalchemy as sa
 
+from src.models.base import db, migrate, jwt
 from flask import Flask, current_app
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
-from flask_jwt_extended import JWTManager
-from flask_migrate import Migrate
+from flask_bcrypt import Bcrypt
+from flask_marshmallow import Marshmallow
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec_webframeworks.flask import FlaskPlugin
+from marshmallow import Schema, fields
 
-# SQLAlchemy ->  Conexao com o banco 
-class Base(DeclarativeBase):
-  pass
+bcrypt = Bcrypt()
+ma = Marshmallow()
 
-db = SQLAlchemy(model_class=Base)
-"""  """
-migrate = Migrate()
+spec = APISpec(
+    title="DIO BANK",
+    version="1.0.0",
+    openapi_version = '3.0.4',
+    info=dict(description="DIO BANK API"),
+    plugins=[FlaskPlugin(), MarshmallowPlugin()],
+)
 
-#JWT
-jwt = JWTManager()
-
-# Modelo banco 
-class Role(db.Model):
-    id: Mapped[int] = mapped_column(sa.Integer,primary_key=True) #Auto 
-    name: Mapped[str] = mapped_column(sa.String, nullable=False, unique=True) 
-    user: Mapped[list["User"]] = relationship(back_populates='role')  
-    
-    def __repr__(self) -> str:
-         return f"Role(id={self.id!r}, name={self.name!r})"
-
-
-class User(db.Model):
-    id: Mapped[int] = mapped_column(sa.Integer,primary_key=True)
-    username: Mapped[str] = mapped_column(sa.String,unique=True)
-    password: Mapped[str] = mapped_column(sa.String,nullable=False)
-    role_id: Mapped[int] = mapped_column(sa.ForeignKey("role.id"))  
-    role: Mapped["Role"] = relationship(back_populates='user')
-     
-    def __repr__(self) -> str:
-         return f"User(id={self.id!r}, username={self.username!r})"
-
-
-class Post(db.Model):
-    id: Mapped[int] = mapped_column(sa.Integer,primary_key=True) #Auto 
-    title: Mapped[str] = mapped_column(sa.String, nullable=False) 
-    body: Mapped[str] = mapped_column(sa.String, nullable=False)
-    created: Mapped[datetime]= mapped_column(sa.DateTime,default=sa.func.now()) #Auto
-    author_id: Mapped[int] = mapped_column(sa.ForeignKey('user.id'))
-
-    def __repr__(self) -> str:
-        return f"Post(id={self.id!r}, title={self.title!r},author_id={self.author_id!r})"
-
-
-# Registrando o nome do commando ->  Conexão com o banco
-@click.command('init-db')
-def init_db_command():
-    global db
-    with current_app.app_context():
-        db.create_all()
-    click.echo('Initialized the database.')
 
 #Config banco
 def create_app(test_config=None):
@@ -66,8 +27,8 @@ def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY='dev',
-    #SQLALCHEMY_DATABASE_URI = 'sqlite:///diobank.sqlite',
-    SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL'],
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///diobank.sqlite',
+    #SQLALCHEMY_DATABASE_URI = os.environ['DATABASE_URL'],
         JWT_SECRET_KEY = "super_secret"
         
     )
@@ -85,19 +46,39 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    #Registro de comandado  / inicialização do banco - Conexão com o banco
-    app.cli.add_command(init_db_command)
-
+    
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-
+    bcrypt.init_app(app)
+    ma.init_app(app)
     #Import blueprint
-    from src.controllers import user,auth, post, role
+    from src.controllers import user,auth, role
+    
     
     app.register_blueprint(user.app)
-    app.register_blueprint(post.app)
     app.register_blueprint(auth.app)
     app.register_blueprint(role.app)
+    
+    @app.route('/docs')
+    def docs():
+        return spec.path(view=user.delete_user).path(view=user.get_user).to_dict()
+    
+    from flask import json
+    from werkzeug.exceptions import HTTPException
+    
+    @app.errorhandler(HTTPException)
+    def handle_exeception(e):
+        response = e.get_response()
+        response.data = json.dumps(
+        {
+            "code": e.code,
+            "name":e.name,
+            "description": e.description,
+        }
+        )
+        response.content_type = "application/json"
+        return response
+    
     
     return app
